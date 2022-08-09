@@ -43,7 +43,7 @@ BACKUP_LOG_LOCATION=""
 RECIPIENT_MAIL="mail@domain.com"
 MAIL_ISSUE="[JOB BACKUP CVUCV]"
 
-# 6. Number of days to store the backup 
+# 6. Number of days to store the backup
 KEEP_DAY=60
 
 # 7. Date of backup
@@ -53,7 +53,7 @@ BACKUP_DATE_ONLY=$(date +"%d-%m-%Y")
 BACKUP_DB_NAME="${BACKUP_PATH}/backup.${DB_TYPE}.${DB_NAME}.${BACKUP_DATE_ONLY}.utf8.custom.dump"
 BACKUP_DIRROOT_NAME="${BACKUP_PATH}/backup.dirroot.${BACKUP_DATE_ONLY}.tar.gz"
 BACKUP_DATAROOT_NAME="${BACKUP_PATH}/backup.dataroot.${BACKUP_DATE_ONLY}.tar.gz"
-BACKUP_LOG_NAME="${BACKUP_LOG_LOCATION}/backup.${DB_TYPE}.${DB_NAME}.${BACKUP_DATE_ONLY}.log"
+BACKUP_LOG_NAME="${BACKUP_LOG_LOCATION}/backup.log.${BACKUP_DATE_ONLY}.log"
 
 # Threshold in GB (15GB)
 THRESHOLD_FOR_BACKUP=15
@@ -184,7 +184,7 @@ fi
 ##################################################################################
 
 if [ $BACKUP_DATAROOT -eq 1 ]; then
-    
+
     if tar -czf ${BACKUP_DATAROOT_NAME_NAME} ${DATAROOT_PATH_PATH}
     then
         echo "$(BACKUP_DATE) Dirroot Backup was successfull"
@@ -193,14 +193,14 @@ if [ $BACKUP_DATAROOT -eq 1 ]; then
         mail -s "${MAIL_ISSUE} Error during dirroot backup creation" ${RECIPIENT_MAIL} < ${BACKUP_LOG_NAME}
         exit 1
     fi
-    
+
     ls -lh ${BACKUP_DIRROOT_NAME}
     echo ""
 fi
 
 ##################################################################################
 ##
-##   4. Deleting old backups
+##   6. Deleting old backups
 ##
 ##################################################################################
 
@@ -212,7 +212,7 @@ if [ $DELETE_OLD_BACKUPS -eq 1 ]; then
         echo "These files will be deleted::"
         find $BACKUP_PATH -type f -mtime +$KEEP_DAY
         echo ""
-        #find $BACKUP_PATH -type f -mtime +$KEEP_DAY -delete
+        find $BACKUP_PATH -type f -mtime +$KEEP_DAY -delete
         echo "Old files deleted"
     fi
 
@@ -221,7 +221,7 @@ fi
 
 ##################################################################################
 ##
-##   5. Notifications
+##   7. Notifications
 ##
 ##################################################################################
 
