@@ -53,6 +53,9 @@ BACKUP_DATE_ONLY=$(date +"%d-%m-%Y")
 BACKUP_NAME="${BACKUP_PATH}/backup.${DB_TYPE}.${DB_NAME}.${BACKUP_DATE_ONLY}.utf8.custom.dump"
 LOG_NAME="${BACKUP_LOG_LOCATION}/backup.${DB_TYPE}.${DB_NAME}.${BACKUP_DATE_ONLY}.log"
 
+# Threshold in GB (15GB)
+THRESHOLD_FOR_BACKUP=15
+
 # To save echo outputs to a log file
 exec > >(tee -a $LOG_NAME)
 #exec 2>&1
@@ -74,15 +77,15 @@ function BACKUP_DATE() {
 ##
 ##################################################################################
 
-FREE_SPACE=$(df -k ${BACKUP_PATH} | awk '$3 ~ /[0-9]+/ { print $4 }')
-FREE_SPACE_GB=$(awk -v valor="${FREE_SPACE}" 'BEGIN{FREE_SPACE_GB=(valor/1024/1024); print FREE_SPACE_GB}')
-OCCUPIED=$(du -k ${BACKUP_PATH} | cut -f1)
-OCCUPIED_GB=$(awk -v valor="${OCCUPIED}" 'BEGIN{OCCUPIED_GB=(valor/1024/1024); print OCCUPIED_GB}')
+FREE_SPACE_GB=$(df -h ${BACKUP_PATH} | awk '$3 ~ /[0-9]+/ { print $4 }')
+OCCUPIED_GB=$(du -sh ${BACKUP_PATH} | awk '{print $1; exit}')
+FREE_SPACE=$(df -k ${BACKUP_PATH}  | awk '$3 ~ /[0-9]+/ { print $4 }')
+FREE_SPACE_2=$(awk -v valor="${FREE_SPACE}" 'BEGIN{FREE_SPACE_GB=(valor/1024/1024); print FREE_SPACE_GB}')
 
 echo "$(BACKUP_DATE) Free space is (GB): ${FREE_SPACE_GB} GB"
 echo "$(BACKUP_DATE) Space occupied last backups (GB): ${OCCUPIED_GB} GB"
 
-if (( $OCCUPIED_GB > $FREE_SPACE_GB )); then
+if (( $THRESHOLD_FOR_BACKUP > $FREE_SPACE_2 )); then
   echo "$(BACKUP_DATE) Error: not enough space estimated"
   mail -s "${MAIL_ISSUE} Error: not enough space estimated" ${RECIPIENT_MAIL} < ${LOG_NAME}
   exit 1
@@ -169,10 +172,8 @@ fi
 ##
 ##################################################################################
 
-FREE_SPACE=$(df -k ${BACKUP_PATH} | awk '$3 ~ /[0-9]+/ { print $4 }')
-FREE_SPACE_GB=$(awk -v valor="${FREE_SPACE}" 'BEGIN{FREE_SPACE_GB=(valor/1024/1024); print FREE_SPACE_GB}')
-OCCUPIED=$(du -k ${BACKUP_PATH} | cut -f1)
-OCCUPIED_GB=$(awk -v valor="${OCCUPIED}" 'BEGIN{OCCUPIED_GB=(valor/1024/1024); print OCCUPIED_GB}')
+FREE_SPACE_GB=$(df -h ${BACKUP_PATH} | awk '$3 ~ /[0-9]+/ { print $4 }')
+OCCUPIED_GB=$(du -sh ${BACKUP_PATH} | awk '{print $1; exit}')
 
 echo "$(BACKUP_DATE) Free space after Backup (GB): ${FREE_SPACE_GB} GB"
 echo "$(BACKUP_DATE) Space occupied after Backup (GB): ${OCCUPIED_GB} GB"
