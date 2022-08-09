@@ -50,14 +50,16 @@ KEEP_DAY=60
 BACKUP_DATE_ONLY=$(date +"%d-%m-%Y")
 
 # 8. Filenames
-BACKUP_NAME="${BACKUP_PATH}/backup.${DB_TYPE}.${DB_NAME}.${BACKUP_DATE_ONLY}.utf8.custom.dump"
-LOG_NAME="${BACKUP_LOG_LOCATION}/backup.${DB_TYPE}.${DB_NAME}.${BACKUP_DATE_ONLY}.log"
+BACKUP_DB_NAME="${BACKUP_PATH}/backup.${DB_TYPE}.${DB_NAME}.${BACKUP_DATE_ONLY}.utf8.custom.dump"
+BACKUP_DIRROOT_NAME="${BACKUP_PATH}/backup.dirroot.${BACKUP_DATE_ONLY}.tar.gz"
+BACKUP_DATAROOT_NAME="${BACKUP_PATH}/backup.dataroot.${BACKUP_DATE_ONLY}.tar.gz"
+BACKUP_LOG_NAME="${BACKUP_LOG_LOCATION}/backup.${DB_TYPE}.${DB_NAME}.${BACKUP_DATE_ONLY}.log"
 
 # Threshold in GB (15GB)
 THRESHOLD_FOR_BACKUP=15
 
 # To save echo outputs to a log file
-exec > >(tee -a $LOG_NAME)
+exec > >(tee -a $BACKUP_LOG_NAME)
 #exec 2>&1
 
 ##################################################################################
@@ -87,15 +89,15 @@ echo "$(BACKUP_DATE) Free space is (GB): ${FREE_SPACE_GB} GB"
 echo "$(BACKUP_DATE) Space occupied last backups (GB): ${OCCUPIED_GB} GB"
 
 if (( $THRESHOLD_FOR_BACKUP > $FREE_SPACE_INT )); then
-  echo "$(BACKUP_DATE) Error: not enough space estimated"
-  mail -s "${MAIL_ISSUE} Error: not enough space estimated" ${RECIPIENT_MAIL} < ${LOG_NAME}
-  exit 1
+    echo "$(BACKUP_DATE) Error: not enough space estimated"
+    mail -s "${MAIL_ISSUE} Error: not enough space estimated" ${RECIPIENT_MAIL} < ${BACKUP_LOG_NAME}
+    exit 1
 fi
 
 echo ""
 ##################################################################################
 ##
-##   2. Credential Checks
+##   2. DB Credential Checks
 ##
 ##################################################################################
 
@@ -109,16 +111,17 @@ if [ $BACKUP_BD -eq 1 ]; then
         echo "$(BACKUP_DATE) Connection to the DB working correctly"
     else
         echo "$(BACKUP_DATE) Error: Connection to the DB is not working!"
-        mail -s "${MAIL_ISSUE} Error: Connection to the DB is not working!" ${RECIPIENT_MAIL} < ${LOG_NAME}
+        mail -s "${MAIL_ISSUE} Error: Connection to the DB is not working!" ${RECIPIENT_MAIL} < ${BACKUP_LOG_NAME}
         exit 1
     fi
 
     echo ""
  
 fi
+
 ##################################################################################
 ##
-##   3. Making BACKUP
+##   3. Making DB BACKUP
 ##
 ##################################################################################
 
@@ -130,20 +133,69 @@ if [ $BACKUP_BD -eq 1 ]; then
     # --dbname: Name of the database to be backed up
 
     echo "$(BACKUP_DATE) Starting pg_dump..."
-    PGPASSWORD=${DB_PASSWORD} pg_dump --format custom --encoding utf8 --host ${DB_HOST} --port ${DB_PORT} --username ${DB_USER} --dbname ${DB_NAME} > ${BACKUP_NAME}
+    PGPASSWORD=${DB_PASSWORD} pg_dump --format custom --encoding utf8 --host ${DB_HOST} --port ${DB_PORT} --username ${DB_USER} --dbname ${DB_NAME} > ${BACKUP_DB_NAME}
 
     if [ $? -eq 0 ]; then
         echo "$(BACKUP_DATE) Backup to the DB was successfull"
     else
         echo "$(BACKUP_DATE) Error during database backup creation"
-        mail -s "${MAIL_ISSUE} Error during database backup creation" ${RECIPIENT_MAIL} < ${LOG_NAME}
+        mail -s "${MAIL_ISSUE} Error during database backup creation" ${RECIPIENT_MAIL} < ${BACKUP_LOG_NAME}
         exit 1
     fi
 
     # We list the created file
-    ls -lh ${BACKUP_NAME}
+    ls -lh ${BACKUP_DB_NAME}
     echo ""
 
+fi
+
+##################################################################################
+##
+##   4. Compressing Dirroot
+##
+##################################################################################
+
+if [ $BACKUP_DIRROOT -eq 1 ]; then
+
+    echo "$(BACKUP_DATE) Starting tar dirroot..."
+    # As it is a directory with permissions for www-data, it is necessary to use 'sudo'
+    #-czvf
+    # -c: Create a new .tar file
+    # -z: gzip compression
+    # -f: File name
+
+    if tar -czf ${BACKUP_DIRROOT_NAME} ${DIRROOT_PATH}
+    then
+        echo "$(BACKUP_DATE) Dirroot Backup was successfull"
+    else
+        echo "$(BACKUP_DATE) Error during dirroot backup creation"
+        mail -s "${MAIL_ISSUE} Error during dirroot backup creation" ${RECIPIENT_MAIL} < ${BACKUP_LOG_NAME}
+        exit 1
+    fi
+
+    ls -lh ${BACKUP_DIRROOT_NAME}
+    echo ""
+fi
+
+##################################################################################
+##
+##   5. Compressing Dataroot
+##
+##################################################################################
+
+if [ $BACKUP_DATAROOT -eq 1 ]; then
+    
+    if tar -czf ${BACKUP_DATAROOT_NAME_NAME} ${DATAROOT_PATH_PATH}
+    then
+        echo "$(BACKUP_DATE) Dirroot Backup was successfull"
+    else
+        echo "$(BACKUP_DATE) Error during dirroot backup creation"
+        mail -s "${MAIL_ISSUE} Error during dirroot backup creation" ${RECIPIENT_MAIL} < ${BACKUP_LOG_NAME}
+        exit 1
+    fi
+    
+    ls -lh ${BACKUP_DIRROOT_NAME}
+    echo ""
 fi
 
 ##################################################################################
@@ -179,7 +231,7 @@ OCCUPIED_GB=$(du -sh ${BACKUP_PATH} | awk '{print $1; exit}')
 echo "$(BACKUP_DATE) Free space after Backup (GB): ${FREE_SPACE_GB} GB"
 echo "$(BACKUP_DATE) Space occupied after Backup (GB): ${OCCUPIED_GB} GB"
 
-mail -s "${MAIL_ISSUE} Backup done satisfactorily!" ${RECIPIENT_MAIL} < ${LOG_NAME}
+mail -s "${MAIL_ISSUE} Backup done satisfactorily!" ${RECIPIENT_MAIL} < ${BACKUP_LOG_NAME}
 
 ##################################################################################
 ##
