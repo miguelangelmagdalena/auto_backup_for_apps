@@ -21,6 +21,7 @@
 BACKUP_BD=1
 BACKUP_DIRROOT=1
 BACKUP_DATAROOT=0
+DELETE_OLD_BACKUPS=1
 
 # 2. BD's Credentials PostgreSQL
 DB_HOST="localhost"
@@ -93,75 +94,80 @@ echo ""
 ##   2. Credential Checks
 ##
 ##################################################################################
-BACKUP_DATE=$(date +"%d-%m-%Y %T")
 
-echo "$(BACKUP_DATE) Cheking connection to DB...."
+if [ $BACKUP_BD -eq 1 ]; then
 
-pg_isready -d$DB_NAME -h$DB_HOST -p$DB_PORT -U$DB_USER
+    echo "$(BACKUP_DATE) Cheking connection to DB...."
 
-if [ $? -eq 0 ]; then
-  echo "$(BACKUP_DATE) Connection to the DB working correctly"
-else
-  echo "$(BACKUP_DATE) Error: Connection to the DB is not working!"
-  mail -s "${MAIL_ISSUE} Error: Connection to the DB is not working!" ${RECIPIENT_MAIL} < ${LOG_NAME}
-  exit 1
+    pg_isready -d$DB_NAME -h$DB_HOST -p$DB_PORT -U$DB_USER
+
+    if [ $? -eq 0 ]; then
+        echo "$(BACKUP_DATE) Connection to the DB working correctly"
+    else
+        echo "$(BACKUP_DATE) Error: Connection to the DB is not working!"
+        mail -s "${MAIL_ISSUE} Error: Connection to the DB is not working!" ${RECIPIENT_MAIL} < ${LOG_NAME}
+        exit 1
+    fi
+
+    echo ""
+ 
 fi
-
-echo ""
-
 ##################################################################################
 ##
 ##   3. Making BACKUP
 ##
 ##################################################################################
-BACKUP_DATE=$(date +"%d-%m-%Y %T")
 
-# To make the backup in PostgreSQL, pg_dump is used, with the following parameters:
-# --encoding utf8: Create the backup with the specified character set (utf8 compatible with Moodle versions)
-# --host: Specifies the host name of the machine on which the database is running (in this case localhost)
-# --username: User with the respective privileges to connect to the DB
-# --dbname: Name of the database to be backed up
+if [ $BACKUP_BD -eq 1 ]; then
+    # To make the backup in PostgreSQL, pg_dump is used, with the following parameters:
+    # --encoding utf8: Create the backup with the specified character set (utf8 compatible with Moodle versions)
+    # --host: Specifies the host name of the machine on which the database is running (in this case localhost)
+    # --username: User with the respective privileges to connect to the DB
+    # --dbname: Name of the database to be backed up
 
-echo "$(BACKUP_DATE) Starting pg_dump..."
-PGPASSWORD=${DB_PASSWORD} pg_dump --format custom --encoding utf8 --host ${DB_HOST} --port ${DB_PORT} --username ${DB_USER} --dbname ${DB_NAME} > ${BACKUP_NAME}
+    echo "$(BACKUP_DATE) Starting pg_dump..."
+    PGPASSWORD=${DB_PASSWORD} pg_dump --format custom --encoding utf8 --host ${DB_HOST} --port ${DB_PORT} --username ${DB_USER} --dbname ${DB_NAME} > ${BACKUP_NAME}
 
-if [ $? -eq 0 ]; then
-  echo "$(BACKUP_DATE) Backup to the DB was successfull"
-else
-  echo "$(BACKUP_DATE) Error during database backup creation"
-  mail -s "${MAIL_ISSUE} Error during database backup creation" ${RECIPIENT_MAIL} < ${LOG_NAME}
-  exit 1
+    if [ $? -eq 0 ]; then
+        echo "$(BACKUP_DATE) Backup to the DB was successfull"
+    else
+        echo "$(BACKUP_DATE) Error during database backup creation"
+        mail -s "${MAIL_ISSUE} Error during database backup creation" ${RECIPIENT_MAIL} < ${LOG_NAME}
+        exit 1
+    fi
+
+    # We list the created file
+    ls -lh ${BACKUP_NAME}
+    echo ""
+
 fi
-
-# We list the created file
-ls -lh ${BACKUP_NAME}
-echo ""
 
 ##################################################################################
 ##
 ##   4. Deleting old backups
 ##
 ##################################################################################
-BACKUP_DATE=$(date +"%d-%m-%Y %T")
 
-# We count files that are older than x days
-FILES_FOR_DELETE=$(find $BACKUP_PATH -type f -mtime +$KEEP_DAY -printf '.' | wc -c)
+if [ $DELETE_OLD_BACKUPS -eq 1 ]; then
+    # We count files that are older than x days
+    FILES_FOR_DELETE=$(find $BACKUP_PATH -type f -mtime +$KEEP_DAY -printf '.' | wc -c)
 
-if [ "${FILES_FOR_DELETE}" -gt 0 ]; then
-  echo "These files will be deleted::"
-  find $BACKUP_PATH -type f -mtime +$KEEP_DAY
-  echo ""
-  #find $BACKUP_PATH -type f -mtime +$KEEP_DAY -delete
-  echo "Old files deleted"
+    if [ "${FILES_FOR_DELETE}" -gt 0 ]; then
+        echo "These files will be deleted::"
+        find $BACKUP_PATH -type f -mtime +$KEEP_DAY
+        echo ""
+        #find $BACKUP_PATH -type f -mtime +$KEEP_DAY -delete
+        echo "Old files deleted"
+    fi
+    
+    echo ""
 fi
-echo ""
 
 ##################################################################################
 ##
 ##   5. Notifications
 ##
 ##################################################################################
-BACKUP_DATE=$(date +"%d-%m-%Y %T")
 
 FREE_SPACE=$(df -k ${BACKUP_PATH} | awk '$3 ~ /[0-9]+/ { print $4 }')
 FREE_SPACE_GB=$(awk -v valor="${FREE_SPACE}" 'BEGIN{FREE_SPACE_GB=(valor/1024/1024); print FREE_SPACE_GB}')
