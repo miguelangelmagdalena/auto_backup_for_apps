@@ -81,11 +81,12 @@ FREE_SPACE_GB=$(df -h ${BACKUP_PATH} | awk '$3 ~ /[0-9]+/ { print $4 }')
 OCCUPIED_GB=$(du -sh ${BACKUP_PATH} | awk '{print $1; exit}')
 FREE_SPACE=$(df -k ${BACKUP_PATH}  | awk '$3 ~ /[0-9]+/ { print $4 }')
 FREE_SPACE_2=$(awk -v valor="${FREE_SPACE}" 'BEGIN{FREE_SPACE_GB=(valor/1024/1024); print FREE_SPACE_GB}')
+FREE_SPACE_INT=${FREE_SPACE_2%.*}
 
 echo "$(BACKUP_DATE) Free space is (GB): ${FREE_SPACE_GB} GB"
 echo "$(BACKUP_DATE) Space occupied last backups (GB): ${OCCUPIED_GB} GB"
 
-if (( $THRESHOLD_FOR_BACKUP > $FREE_SPACE_2 )); then
+if (( $THRESHOLD_FOR_BACKUP > $FREE_SPACE_INT )); then
   echo "$(BACKUP_DATE) Error: not enough space estimated"
   mail -s "${MAIL_ISSUE} Error: not enough space estimated" ${RECIPIENT_MAIL} < ${LOG_NAME}
   exit 1
@@ -162,7 +163,7 @@ if [ $DELETE_OLD_BACKUPS -eq 1 ]; then
         #find $BACKUP_PATH -type f -mtime +$KEEP_DAY -delete
         echo "Old files deleted"
     fi
-    
+
     echo ""
 fi
 
