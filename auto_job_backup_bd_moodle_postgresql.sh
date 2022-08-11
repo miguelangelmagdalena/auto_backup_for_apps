@@ -105,7 +105,7 @@ if [ $BACKUP_BD -eq 1 ]; then
 
     echo "$(BACKUP_DATE) Cheking connection to DB...." >> $BACKUP_LOG_NAME
 
-    pg_isready -d$DB_NAME -h$DB_HOST -p$DB_PORT -U$DB_USER
+    pg_isready -d$DB_NAME -h$DB_HOST -p$DB_PORT -U$DB_USER >> $BACKUP_LOG_NAME
 
     if [ $? -eq 0 ]; then
         echo "$(BACKUP_DATE) Connection to the DB working correctly" >> $BACKUP_LOG_NAME
@@ -144,7 +144,7 @@ if [ $BACKUP_BD -eq 1 ]; then
     fi
 
     # We list the created file
-    ls -lh ${BACKUP_DB_NAME}
+    ls -lh ${BACKUP_DB_NAME} >> $BACKUP_LOG_NAME
     echo "" >> $BACKUP_LOG_NAME
 
 fi
@@ -164,7 +164,7 @@ if [ $BACKUP_DIRROOT -eq 1 ]; then
     # -z: gzip compression
     # -f: File name
 
-    if tar -czf ${BACKUP_DIRROOT_NAME} ${DIRROOT_PATH}
+    if tar -czf ${BACKUP_DIRROOT_NAME} ${DIRROOT_PATH} 1 2>> $BACKUP_LOG_NAME
     then
         echo "$(BACKUP_DATE) Dirroot Backup was successfull" >> $BACKUP_LOG_NAME
     else
@@ -173,7 +173,7 @@ if [ $BACKUP_DIRROOT -eq 1 ]; then
         exit 1
     fi
 
-    ls -lh ${BACKUP_DIRROOT_NAME}
+    ls -lh ${BACKUP_DIRROOT_NAME} >> $BACKUP_LOG_NAME
     echo "" >> $BACKUP_LOG_NAME
 fi
 
