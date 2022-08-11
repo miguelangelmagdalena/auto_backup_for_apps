@@ -59,7 +59,7 @@ BACKUP_LOG_NAME="${BACKUP_LOG_LOCATION}/backup.log.${BACKUP_DATE_ONLY}.log"
 THRESHOLD_FOR_BACKUP=15
 
 # To save echo outputs to a log file
-exec > >(tee -a $BACKUP_LOG_NAME)
+#exec >> (tee -a $BACKUP_LOG_NAME)
 #exec 2>&1
 
 ##################################################################################
@@ -85,16 +85,16 @@ FREE_SPACE=$(df -k ${BACKUP_PATH}  | awk '$3 ~ /[0-9]+/ { print $4 }')
 FREE_SPACE_2=$(awk -v valor="${FREE_SPACE}" 'BEGIN{FREE_SPACE_GB=(valor/1024/1024); print FREE_SPACE_GB}')
 FREE_SPACE_INT=${FREE_SPACE_2%.*}
 
-echo "$(BACKUP_DATE) Free space is (GB): ${FREE_SPACE_GB} GB"
-echo "$(BACKUP_DATE) Space occupied last backups (GB): ${OCCUPIED_GB} GB"
+echo "$(BACKUP_DATE) Free space is (GB): ${FREE_SPACE_GB} GB" >> (tee -a $BACKUP_LOG_NAME)
+echo "$(BACKUP_DATE) Space occupied last backups (GB): ${OCCUPIED_GB} GB" >> (tee -a $BACKUP_LOG_NAME)
 
 if (( $THRESHOLD_FOR_BACKUP > $FREE_SPACE_INT )); then
-    echo "$(BACKUP_DATE) Error: not enough space estimated"
+    echo "$(BACKUP_DATE) Error: not enough space estimated" >> (tee -a $BACKUP_LOG_NAME)
     mail -s "${MAIL_ISSUE} Error: not enough space estimated" ${RECIPIENT_MAIL} < ${BACKUP_LOG_NAME}
     exit 1
 fi
 
-echo ""
+echo "" >> (tee -a $BACKUP_LOG_NAME)
 ##################################################################################
 ##
 ##   2. DB Credential Checks
@@ -103,19 +103,19 @@ echo ""
 
 if [ $BACKUP_BD -eq 1 ]; then
 
-    echo "$(BACKUP_DATE) Cheking connection to DB...."
+    echo "$(BACKUP_DATE) Cheking connection to DB...." >> (tee -a $BACKUP_LOG_NAME)
 
     pg_isready -d$DB_NAME -h$DB_HOST -p$DB_PORT -U$DB_USER
 
     if [ $? -eq 0 ]; then
-        echo "$(BACKUP_DATE) Connection to the DB working correctly"
+        echo "$(BACKUP_DATE) Connection to the DB working correctly" >> (tee -a $BACKUP_LOG_NAME)
     else
-        echo "$(BACKUP_DATE) Error: Connection to the DB is not working!"
+        echo "$(BACKUP_DATE) Error: Connection to the DB is not working!" >> (tee -a $BACKUP_LOG_NAME)
         mail -s "${MAIL_ISSUE} Error: Connection to the DB is not working!" ${RECIPIENT_MAIL} < ${BACKUP_LOG_NAME}
         exit 1
     fi
 
-    echo ""
+    echo "" >> (tee -a $BACKUP_LOG_NAME)
 
 fi
 
@@ -132,20 +132,20 @@ if [ $BACKUP_BD -eq 1 ]; then
     # --username: User with the respective privileges to connect to the DB
     # --dbname: Name of the database to be backed up
 
-    echo "$(BACKUP_DATE) Starting pg_dump..."
+    echo "$(BACKUP_DATE) Starting pg_dump..." >> (tee -a $BACKUP_LOG_NAME)
     PGPASSWORD=${DB_PASSWORD} pg_dump --format custom --encoding utf8 --host ${DB_HOST} --port ${DB_PORT} --username ${DB_USER} --dbname ${DB_NAME} > ${BACKUP_DB_NAME}
 
     if [ $? -eq 0 ]; then
-        echo "$(BACKUP_DATE) Backup to the DB was successfull"
+        echo "$(BACKUP_DATE) Backup to the DB was successfull" >> (tee -a $BACKUP_LOG_NAME)
     else
-        echo "$(BACKUP_DATE) Error during database backup creation"
+        echo "$(BACKUP_DATE) Error during database backup creation" >> (tee -a $BACKUP_LOG_NAME)
         mail -s "${MAIL_ISSUE} Error during database backup creation" ${RECIPIENT_MAIL} < ${BACKUP_LOG_NAME}
         exit 1
     fi
 
     # We list the created file
     ls -lh ${BACKUP_DB_NAME}
-    echo ""
+    echo "" >> (tee -a $BACKUP_LOG_NAME)
 
 fi
 
@@ -157,7 +157,7 @@ fi
 
 if [ $BACKUP_DIRROOT -eq 1 ]; then
 
-    echo "$(BACKUP_DATE) Starting tar dirroot..."
+    echo "$(BACKUP_DATE) Starting tar dirroot..." >> (tee -a $BACKUP_LOG_NAME)
     # As it is a directory with permissions for www-data, it is necessary to use 'sudo'
     #-czvf
     # -c: Create a new .tar file
@@ -166,15 +166,15 @@ if [ $BACKUP_DIRROOT -eq 1 ]; then
 
     if tar -czf ${BACKUP_DIRROOT_NAME} ${DIRROOT_PATH}
     then
-        echo "$(BACKUP_DATE) Dirroot Backup was successfull"
+        echo "$(BACKUP_DATE) Dirroot Backup was successfull" >> (tee -a $BACKUP_LOG_NAME)
     else
-        echo "$(BACKUP_DATE) Error during dirroot backup creation"
+        echo "$(BACKUP_DATE) Error during dirroot backup creation" >> (tee -a $BACKUP_LOG_NAME)
         mail -s "${MAIL_ISSUE} Error during dirroot backup creation" ${RECIPIENT_MAIL} < ${BACKUP_LOG_NAME}
         exit 1
     fi
 
     ls -lh ${BACKUP_DIRROOT_NAME}
-    echo ""
+    echo "" >> (tee -a $BACKUP_LOG_NAME)
 fi
 
 ##################################################################################
@@ -187,15 +187,15 @@ if [ $BACKUP_DATAROOT -eq 1 ]; then
 
     if tar -czf ${BACKUP_DATAROOT_NAME_NAME} ${DATAROOT_PATH_PATH}
     then
-        echo "$(BACKUP_DATE) Dirroot Backup was successfull"
+        echo "$(BACKUP_DATE) Dirroot Backup was successfull" >> (tee -a $BACKUP_LOG_NAME)
     else
-        echo "$(BACKUP_DATE) Error during dirroot backup creation"
+        echo "$(BACKUP_DATE) Error during dirroot backup creation" >> (tee -a $BACKUP_LOG_NAME)
         mail -s "${MAIL_ISSUE} Error during dirroot backup creation" ${RECIPIENT_MAIL} < ${BACKUP_LOG_NAME}
         exit 1
     fi
 
     ls -lh ${BACKUP_DIRROOT_NAME}
-    echo ""
+    echo "" >> (tee -a $BACKUP_LOG_NAME)
 fi
 
 ##################################################################################
@@ -209,14 +209,14 @@ if [ $DELETE_OLD_BACKUPS -eq 1 ]; then
     FILES_FOR_DELETE=$(find $BACKUP_PATH -type f -mtime +$KEEP_DAY -printf '.' | wc -c)
 
     if [ "${FILES_FOR_DELETE}" -gt 0 ]; then
-        echo "These files will be deleted::"
+        echo "These files will be deleted::" >> (tee -a $BACKUP_LOG_NAME)
         find $BACKUP_PATH -type f -mtime +$KEEP_DAY
-        echo ""
+        echo "" >> (tee -a $BACKUP_LOG_NAME)
         find $BACKUP_PATH -type f -mtime +$KEEP_DAY -delete
-        echo "Old files deleted"
+        echo "Old files deleted" >> (tee -a $BACKUP_LOG_NAME)
     fi
 
-    echo ""
+    echo "" >> (tee -a $BACKUP_LOG_NAME)
 fi
 
 ##################################################################################
@@ -228,8 +228,8 @@ fi
 FREE_SPACE_GB=$(df -h ${BACKUP_PATH} | awk '$3 ~ /[0-9]+/ { print $4 }')
 OCCUPIED_GB=$(du -sh ${BACKUP_PATH} | awk '{print $1; exit}')
 
-echo "$(BACKUP_DATE) Free space after Backup (GB): ${FREE_SPACE_GB} GB"
-echo "$(BACKUP_DATE) Space occupied after Backup (GB): ${OCCUPIED_GB} GB"
+echo "$(BACKUP_DATE) Free space after Backup (GB): ${FREE_SPACE_GB} GB" >> (tee -a $BACKUP_LOG_NAME)
+echo "$(BACKUP_DATE) Space occupied after Backup (GB): ${OCCUPIED_GB} GB" >> (tee -a $BACKUP_LOG_NAME)
 
 mail -s "${MAIL_ISSUE} Backup done satisfactorily!" ${RECIPIENT_MAIL} < ${BACKUP_LOG_NAME}
 
