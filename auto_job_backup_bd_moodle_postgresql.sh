@@ -164,7 +164,7 @@ if [ $BACKUP_DIRROOT -eq 1 ]; then
     # -z: gzip compression
     # -f: File name
 
-    if tar -czf ${BACKUP_DIRROOT_NAME} ${DIRROOT_PATH} 1 2>> $BACKUP_LOG_NAME
+    if tar -czf ${BACKUP_DIRROOT_NAME} ${DIRROOT_PATH} 2>> $BACKUP_LOG_NAME
     then
         echo "$(BACKUP_DATE) Dirroot Backup was successfull" >> $BACKUP_LOG_NAME
     else
