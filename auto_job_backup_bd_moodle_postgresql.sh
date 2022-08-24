@@ -8,6 +8,7 @@
 ##   2. Backup MySql https://tecadmin.net/bash-script-mysql-database-backup/
 ##   3. Backup MySql https://jyzaguirre.wordpress.com/2014/10/06/programar-backup-mysql-en-linux-incluye-script/
 ##   4. Check space https://stackoverflow.com/questions/479276/how-to-find-out-the-free-disk-space-for-a-given-path-on-a-linux-shell
+##   5. Using gmail with postfix in Ubuntu 18.04 https://kifarunix.com/configure-postfix-to-use-gmail-smtp-on-ubuntu-18-04/
 ##
 ##################################################################################
 
